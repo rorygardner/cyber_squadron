@@ -1,1 +1,144 @@
+#### CONFIDENCE INTERVAL FOR PERMUTATION TEST
 
+import numpy as np
+import pandas as pd
+from scipy.stats import scoreatpercentile
+
+# Assuming 'monthly' DataFrame and the initial groups are already defined:
+group_m = monthly.loc[monthly['metro_label'] == 1, 'PC1'].to_numpy(dtype=float)
+group_nm = monthly.loc[monthly['metro_label'] == 0, 'PC1'].to_numpy(dtype=float)
+
+# --- Define the Bootstrap Function ---
+
+def bootstrap_ci(group_a, group_b, num_samples=10000, ci_level=0.95):
+    """
+    Calculates the two-sample bootstrap confidence interval for the difference in means.
+
+    Args:
+        group_a: numpy array-like object with scores for the first group.
+        group_b: numpy array-like object with scores for the second group.
+        num_samples (int): The number of bootstrap samples to draw.
+        ci_level (float): The desired confidence level (e.g., 0.95 for 95%).
+
+    Returns:
+        tuple: (lower_bound, upper_bound) of the confidence interval.
+    """
+    group_a = np.array(group_a)
+    group_b = np.array(group_b)
+    n_a = len(group_a)
+    n_b = len(group_b)
+
+    # 1. Calculate the observed difference (Optional, but good for context)
+    observed_diff = np.mean(group_a) - np.mean(group_b)
+
+    # 2. Perform the bootstrap resampling
+    diff_of_means = []
+    np.random.seed(42) # Set seed for reproducibility
+
+    for _ in range(num_samples):
+        # Sample with replacement from each group independently
+        sample_a = np.random.choice(group_a, size=n_a, replace=True)
+        sample_b = np.random.choice(group_b, size=n_b, replace=True)
+
+        # Calculate the difference in means for the bootstrap sample
+        bootstrap_diff = np.mean(sample_a) - np.mean(sample_b)
+        diff_of_means.append(bootstrap_diff)
+
+    # 3. Calculate the confidence interval bounds (Percentile Method)
+    # The error (alpha) is split between the two tails
+    alpha = 1.0 - ci_level
+    lower_percentile = alpha / 2 * 100
+    upper_percentile = (1.0 - alpha / 2) * 100
+
+    # Find the percentiles of the distribution of differences
+    lower_bound = scoreatpercentile(diff_of_means, lower_percentile)
+    upper_bound = scoreatpercentile(diff_of_means, upper_percentile)
+
+    print(f"Observed Difference in Means: {observed_diff:.4f}")
+    return lower_bound, upper_bound
+
+# --- Execution ---
+
+
+np.random.seed(0)
+
+# Calculate the 95% CI
+ci_lower, ci_upper = bootstrap_ci(group_m, group_nm, num_samples=10000, ci_level=0.95)
+
+# --- Results ---
+print(f"\n95% Bootstrap Confidence Interval:")
+print(f"Lower Bound: {ci_lower:.4f}")
+print(f"Upper Bound: {ci_upper:.4f}")
+
+
+
+
+#### FINDING EFFECT SIZE
+
+
+import numpy as np
+
+
+group_m = monthly.loc[monthly['metro_label'] == 1, 'PC1'].to_numpy(dtype=float)
+group_nm = monthly.loc[monthly['metro_label'] == 0, 'PC1'].to_numpy(dtype=float)
+
+np.random.seed(21) # Seed for reproducibility
+
+def permutation_test(group_a, group_b, num_permutations=10000):
+    """
+    Permutation test for average PC1 scores and calculates the Probability of Superiority (P).
+
+    Args:
+        group_a: numpy array-like object with scores for first group.
+        group_b: numpy array-like object with scores for second group.
+        num_permutations (int): number of permutations.
+
+    Returns:
+        tuple: (p_value, common_language_effect_size)
+    """
+    group_a = np.array(group_a)
+    group_b = np.array(group_b)
+
+    n_a = len(group_a)
+    combined = np.concatenate((group_a, group_b))
+    observed_diff = np.mean(group_a) - np.mean(group_b)
+
+    p_value_count = 0
+
+    # 1. Permutation Test for P-value (Same as your original code)
+    for _ in range(num_permutations):
+        perm = np.random.permutation(combined)
+        perm_diff = np.mean(perm[:n_a]) - np.mean(perm[n_a:])
+
+        if np.abs(perm_diff) >= np.abs(observed_diff):
+            p_value_count += 1
+
+    p_value = (p_value_count + 1) / (num_permutations + 1)
+
+    # 2. Calculate the Common Language Effect Size (P)
+    # The probability that a random value from group_a is greater than a random value from group_b.
+    # This is calculated on the observed, not permuted, data.
+    count_superior = 0
+    total_comparisons = n_a * len(group_b)
+
+    # Iterate over all possible pairs of observations (x_a, x_b)
+    for val_a in group_a:
+        for val_b in group_b:
+            if val_a > val_b:
+                count_superior += 1
+
+    common_language_effect_size = count_superior / total_comparisons
+
+    return p_value, common_language_effect_size
+
+# --- Execution ---
+
+
+group_m = np.random.normal(loc=10, scale=2, size=50)
+group_nm = np.random.normal(loc=12, scale=2, size=60)
+
+p_value, p_effect_size = permutation_test(group_m, group_nm)
+
+# --- Results ---
+print(f"Permutation Test P-value: {p_value:.4f}")
+print(f"Common Language Effect Size (P): {p_effect_size:.4f}")
