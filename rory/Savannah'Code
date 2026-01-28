@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import scoreatpercentile
 
+monthly = pd.read_csv("rory/data/monthly.csv")
+
 # Assuming 'monthly' DataFrame and the initial groups are already defined:
 group_m = monthly.loc[monthly['metro_label'] == 1, 'PC1'].to_numpy(dtype=float)
 group_nm = monthly.loc[monthly['metro_label'] == 0, 'PC1'].to_numpy(dtype=float)
