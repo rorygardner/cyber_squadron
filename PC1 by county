@@ -1,0 +1,11 @@
+# 1. Aggregate: Calculate the mean PC1 for each county (sc)
+county_means = monthly.groupby(['sub_region_2', 'metro_label'])['PC1'].mean().reset_index()
+
+# 2. Separate into Metro (M) and Non-Metro (N) groups
+# Now each entry in group_m and group_nm represents one unique county
+group_m = county_means.loc[county_means['metro_label'] == 1, 'PC1'].to_numpy(dtype=float)
+group_nm = county_means.loc[county_means['metro_label'] == 0, 'PC1'].to_numpy(dtype=float)
+
+# 3. Run your existing permutation test function
+p_value = permutation_test(group_m, group_nm)
+print(p_value)
