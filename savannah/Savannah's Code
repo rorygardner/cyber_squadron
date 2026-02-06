@@ -1,0 +1,45 @@
+#Aggregate: Calculate the mean PC1 for each county
+county_means = monthly.groupby(['sub_region_2', 'metro_label'])['PC1'].mean().reset_index()
+
+# Defining the funtion
+
+# separate groups
+group_m = county_means.loc[county_means['metro_label'] == 1, 'PC1'].to_numpy(dtype=float)
+group_nm = county_means.loc[county_means['metro_label'] == 0, 'PC1'].to_numpy(dtype=float)
+
+np.random.seed(42) # seed
+
+def permutation_test(group_a, group_b, num_permutations=10000): 
+    """
+    Permutation test for average PC1 scores
+
+    Args: 
+        group_a: numpy array-like  object with scores for first group
+        group_a: numpy array-like  object with scores for second group
+        num_permutations (int): number of permutations
+
+    Returns: 
+        p-value 
+    """
+    group_a = np.array(group_a) # convert to groups
+    group_b = np.array(group_b)
+
+    n_a = len(group_a)
+    combined = np.concatenate((group_a, group_b))
+    observed_diff = np.mean(group_a) - np.mean(group_b)
+
+    count = 0
+
+    for _ in range(num_permutations):
+        perm = np.random.permutation(combined)
+        perm_diff = np.mean(perm[:n_a]) - np.mean(perm[n_a:])
+                
+        if np.abs(perm_diff) >= np.abs(observed_diff):
+            count += 1
+                    
+    # Include the observed case in the calculation (+1)
+    return (count + 1) / (num_permutations + 1)
+
+
+p_value = permutation_test(group_m, group_nm)
+print(p_value)
